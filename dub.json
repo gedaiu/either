@@ -1,0 +1,18 @@
+{
+  "authors": [
+    "Bogdan Szabo"
+  ],
+  "configurations": [
+    {
+      "name": "unittest",
+      "targetType": "executable",
+      "dependencies": {
+        "fluent-asserts": "*"
+      }
+    }
+  ],
+	"copyright": "Copyright © 2022, Bogdan Szabo",
+  "description": "An implementation for the either monad",
+  "license": "MIT",
+  "name": "either"
+}
