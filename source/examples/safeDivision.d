@@ -36,10 +36,10 @@ Either!(string, T) divideBy(U, V, T)(Either!(U, T) numerator, Either!(V, T) deno
 
   return denominator
     .when!zero ("Division by zero!")
-    .when!(isNaN!T) (() => "Denominator is NaN.")
+    .when!(isNaN!T) ("Denominator is NaN.")
     .when((T a) {
       return numerator
-        .when!(isNaN!T) (() => "Numerator is NaN.")
+        .when!(isNaN!T) ("Numerator is NaN.")
         .when((T b) {
           return b / a;
         });
