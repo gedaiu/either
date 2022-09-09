@@ -35,15 +35,13 @@ Either!(string, T) divideBy(U, V, T)(Either!(U, T) numerator, Either!(V, T) deno
   enum T zero = 0;
 
   return denominator
-    .when!zero ("Division by zero!")
+    .when!(zero) ("Division by zero!")
     .when!(isNaN!T) ("Denominator is NaN.")
-    .when((T a) {
-      return numerator
+    .when((T a) =>
+      numerator
         .when!(isNaN!T) ("Numerator is NaN.")
-        .when((T b) {
-          return b / a;
-        });
-    });
+        .when((T b) => b / a)
+    );
 }
 
 /// divideBy with positive integers

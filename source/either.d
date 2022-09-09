@@ -185,6 +185,14 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
     return this;
   }
+
+  This when(alias check, T)(T newValue) if((is(T == Right) || is(T == Left)) && canCheck!(check, Right)) {
+    if(isRight && check(right)) {
+      return newValue.bind!This;
+    }
+
+    return this;
+  }
 }
 
 /// isLeft is true when the struct is setup with the left type
