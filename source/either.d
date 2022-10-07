@@ -85,7 +85,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
   // Type matchers
 
-  This when(Func)(Func matcher) if(isCallableWith!(Func, Left) && is(ReturnType!Func == void)) {
+  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Left) && is(ReturnType!Matcher == void)) {
     if(isLeft) {
       matcher(left);
     }
@@ -93,11 +93,11 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     return this;
   }
 
-  This when(Func)(Func matcher) if(isCallableWith!(Func, Left) && !is(ReturnType!Func == void)) {
+  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Left) && !is(ReturnType!Matcher == void)) {
     static if(
-      !is(ReturnType!Func == This) &&
-      !is(ReturnType!Func == Left) &&
-      !is(ReturnType!Func == Right)
+      !is(ReturnType!Matcher == This) &&
+      !is(ReturnType!Matcher == Left) &&
+      !is(ReturnType!Matcher == Right)
     ) {
       static assert(false, "when() returns `" ~ ReturnType!Func.stringof ~
         "`. It must return `" ~ Left.stringof ~ "`, `" ~ Right.stringof ~ "` or `Either!(" ~ Left.stringof ~ ", " ~ Right.stringof ~ ")`");
@@ -108,10 +108,9 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
       return this;
     }
-
   }
 
-  This when(Func)(Func matcher) if(isCallableWith!(Func, Right) && is(ReturnType!Func == void)) {
+  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Right) && is(ReturnType!Matcher == void)) {
     if(isRight) {
       matcher(right);
     }
@@ -119,13 +118,13 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     return this;
   }
 
-  This when(Func)(Func matcher) if(isCallableWith!(Func, Right) && !is(ReturnType!Func == void)) {
+  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Right) && !is(ReturnType!Matcher == void)) {
     static if(
-      !is(ReturnType!Func == This) &&
-      !is(ReturnType!Func == Left) &&
-      !is(ReturnType!Func == Right)
+      !is(ReturnType!Matcher == This) &&
+      !is(ReturnType!Matcher == Left) &&
+      !is(ReturnType!Matcher == Right)
     ) {
-      static assert(false, "when() returns `" ~ ReturnType!Func.stringof ~
+      static assert(false, "when() returns `" ~ ReturnType!Matcher.stringof ~
         "`. It must return `" ~ Left.stringof ~ "`, `" ~ Right.stringof ~ "` or `Either!(" ~ Left.stringof ~ ", " ~ Right.stringof ~ ")`");
     } else {
       if(isRight) {
@@ -136,13 +135,13 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     }
   }
 
-  This when(Func)(Func matcher) if(!isCallableWith!(Func, Left) && !isCallableWith!(Func, Right)) {
+  This when(Matcher)(Matcher matcher) if(!isCallableWith!(Matcher, Left) && !isCallableWith!(Matcher, Right)) {
     return this;
   }
 
   // value matchers
 
-  This when(alias value, Func)(Func matcher) if(is(typeof(value) == Left) && isCallable!Func && Parameters!Func.length == 0) {
+  This when(alias value, Matcher)(Matcher matcher) if(is(typeof(value) == Left) && isCallable!Matcher && Parameters!Matcher.length == 0) {
     if(isLeft && value == left) {
       auto result = matcher();
       return result.bind!This;
@@ -178,7 +177,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
   // function matchers
 
-  This when(alias check, Func)(Func matcher) if(canCheck!(check, Right) && isCallable!Func && Parameters!Func.length == 0) {
+  This when(alias check, Matcher)(Matcher matcher) if(canCheck!(check, Right) && isCallable!Matcher && Parameters!Matcher.length == 0) {
     if(isRight && check(right)) {
       return matcher().bind!This;
     }
