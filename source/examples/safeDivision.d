@@ -31,16 +31,16 @@ Either!(string, T) divideBy(T)(Either!(string, T) numerator, T denominator) if(!
 }
 
 ///
-Either!(string, T) divideBy(U, V, T)(Either!(U, T) numerator, Either!(V, T) denominator) {
-  enum T zero = 0;
+Either!(string, NumericType) divideBy(U, V, NumericType)(Either!(U, NumericType) numerator, Either!(V, NumericType) denominator) {
+  enum NumericType zero = 0;
 
   return denominator
     .when!(zero) ("Division by zero!")
-    .when!(isNaN!T) ("Denominator is NaN.")
-    .when((T a) =>
+    .when!(isNaN!NumericType) ("Denominator is NaN.")
+    .when((NumericType a) =>
       numerator
-        .when!(isNaN!T) ("Numerator is NaN.")
-        .when((T b) => b / a)
+        .when!(isNaN!NumericType) ("Numerator is NaN.")
+        .when((NumericType b) => b / a)
     );
 }
 
