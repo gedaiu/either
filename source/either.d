@@ -24,14 +24,14 @@ bool isCallableWith(func, T)() {
   }
 }
 
-bool canCheck(alias func, T)() {
-  static if(!isCallable!func) {
+bool canCheck(alias Matcher, ParameterType)() {
+  static if(!isCallable!Matcher) {
     return false;
-  } else static if(Parameters!func.length != 1) {
+  } else static if(Parameters!Matcher.length != 1) {
     return false;
-  } else static if(!is(Parameters!func[0] == T)) {
+  } else static if(!is(Parameters!Matcher[0] == ParameterType)) {
     return false;
-  } else static if(!is(ReturnType!func == bool)) {
+  } else static if(!is(ReturnType!Matcher == bool)) {
     return false;
   } else {
     return true;
