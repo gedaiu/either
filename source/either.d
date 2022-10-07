@@ -38,16 +38,26 @@ bool canCheck(alias Matcher, ParameterType)() {
   }
 }
 
-///
+/// Returns true if the given struct can be use as an Either struct
 template isEitherStruct(T) if(hasMember!(T, "isLeft") && hasMember!(T, "isRight")) {
   enum isEitherStruct = true;
 }
 
-///
+/// ditto
 template isEitherStruct(T) if(!hasMember!(T, "isLeft") || !hasMember!(T, "isRight")) {
   enum isEitherStruct = false;
 }
 
+/// Returns true if the function returns void
+template hasVoidReturn(Func) {
+  static if (is(ReturnType!Func == void)) {
+    enum hasVoidReturn = true;
+  } else {
+    enum hasVoidReturn = false;
+  }
+}
+
+///
 struct Any {}
 
 /// The Either type represents values with two possibilities:
@@ -85,7 +95,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
   // Type matchers
 
-  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Left) && is(ReturnType!Matcher == void)) {
+  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Left) && hasVoidReturn!Matcher) {
     if(isLeft) {
       matcher(left);
     }
@@ -93,7 +103,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     return this;
   }
 
-  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Left) && !is(ReturnType!Matcher == void)) {
+  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Left) && !hasVoidReturn!Matcher) {
     static if(
       !is(ReturnType!Matcher == This) &&
       !is(ReturnType!Matcher == Left) &&
@@ -110,7 +120,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     }
   }
 
-  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Right) && is(ReturnType!Matcher == void)) {
+  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Right) && hasVoidReturn!Matcher) {
     if(isRight) {
       matcher(right);
     }
@@ -118,7 +128,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     return this;
   }
 
-  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Right) && !is(ReturnType!Matcher == void)) {
+  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Right) && !hasVoidReturn!Matcher) {
     static if(
       !is(ReturnType!Matcher == This) &&
       !is(ReturnType!Matcher == Left) &&
