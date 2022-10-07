@@ -158,7 +158,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
       return this;
     } else {
-      static assert(false, "when() returns `" ~ ReturnType!Func.stringof ~
+      static assert(false, "when() returns `" ~ ReturnType!Matcher.stringof ~
         "`. It must return `" ~ Left.stringof ~ "`, `" ~ Right.stringof ~ "` or `Either!(" ~ Left.stringof ~ ", " ~ Right.stringof ~ ")`");
     }
   }
@@ -383,33 +383,13 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     bool message;
 
     auto result = either
-      .when!(3) (true)
+      .when!3 (true)
       .when((bool value) {
         message = value;
       });
 
     result.isLeft.should.equal(true);
     message.should.equal(false);
-  }
-
-  // function matchers
-
-  /// Match Left or Right values using functions
-  This when(alias check, Matcher)(Matcher matcher) if(canCheck!(check, Right) && isCallable!Matcher && Parameters!Matcher.length == 0) {
-    if(isRight && check(right)) {
-      return matcher().bind!This;
-    }
-
-    return this;
-  }
-
-  /// ditto
-  This when(alias check, T)(T newValue) if((is(T == Right) || is(T == Left)) && canCheck!(check, Right)) {
-    if(isRight && check(right)) {
-      return newValue.bind!This;
-    }
-
-    return this;
   }
 
   /// it does not return the 'when' value when the value is not matched
@@ -442,6 +422,55 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     message.should.equal(true);
   }
 
+  // function matchers
+
+  /// Match Left or Right values using functions
+  This when(alias check, Matcher)(Matcher matcher) if(canCheck!(check, Right) && isCallable!Matcher) {
+    if(isRight && check(right)) {
+      static if(Parameters!Matcher.length == 0) {
+        return matcher().bind!This;
+      } else static if(isCallableWith!(Matcher, Right)) {
+        return matcher(right).bind!This;
+      } else {
+        static assert(false, "when() will never match. It checks `" ~ Right.stringof ~ "` values and it handles `" ~ Parameters!Matcher[0].stringof ~ "` values. The types must be the same.");
+      }
+    }
+
+    return this;
+  }
+
+  /// ditto
+  This when(alias check, Matcher)(Matcher matcher) if(canCheck!(check, Left) && isCallable!Matcher) {
+    if(isLeft && check(left)) {
+      static if(Parameters!Matcher.length == 0) {
+        return matcher().bind!This;
+      } else static if(isCallableWith!(Matcher, Left)) {
+        return matcher(left).bind!This;
+      } else {
+        static assert(false, "when() will never match. It checks `" ~ Left.stringof ~ "` values and it handles `" ~ Parameters!Matcher[0].stringof ~ "` values. The types must be the same.");
+      }
+    }
+
+    return this;
+  }
+
+  /// ditto
+  This when(alias check, T)(T newValue) if((is(T == Right) || is(T == Left)) && isCallable!check) {
+    static if(canCheck!(check, Left)) {
+      if(isLeft && check(left)) {
+        return newValue.bind!This;
+      }
+    }
+
+    static if(canCheck!(check, Right)) {
+      if(isRight && check(right)) {
+        return newValue.bind!This;
+      }
+    }
+
+    return this;
+  }
+
   /// it calls the 'when' function when the function check returns true for Right value
   unittest {
     auto either = Either!(int, bool)(true);
@@ -449,6 +478,23 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
     auto result = either
       .when!alwaysTrue ({
+        return 2;
+      })
+      .when((int value) {
+        message = value;
+      });
+
+    result.isLeft.should.equal(true);
+    message.should.equal(2);
+  }
+
+  /// it calls the 'when' with the value function when the function check returns true for Right value
+  unittest {
+    auto either = Either!(int, bool)(true);
+    int message;
+
+    auto result = either
+      .when!alwaysTrue ((bool value) {
         return 2;
       })
       .when((int value) {
@@ -475,6 +521,23 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     result.isRight.should.equal(true);
     message.should.equal(true);
   }
+
+  /// it calls the 'when' function when the function check returns true for Left value
+  unittest {
+    auto either = Either!(int, bool)(8);
+    int message;
+
+    auto result = either
+      .when!alwaysTrueInt ({
+        return 2;
+      })
+      .when((int value) {
+        message = value;
+      });
+
+    result.isLeft.should.equal(true);
+    message.should.equal(2);
+  }
 }
 
 version(unittest) {
@@ -486,7 +549,15 @@ version(unittest) {
     return true;
   }
 
+  bool alwaysTrueInt(int) {
+    return true;
+  }
+
   bool alwaysFalse(bool) {
+    return false;
+  }
+
+  bool alwaysFalseInt(int) {
     return false;
   }
 }
