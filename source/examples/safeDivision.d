@@ -14,7 +14,7 @@ bool isNaN(X)(X x) if (isFloatingPoint!(X)) {
 }
 
 ///
-Either!(string, T) divideBy(T)(T numerator, T denominator) if(!isEither!T) {
+Either!(string, T) divideBy(T)(T numerator, T denominator) if(!isEitherStruct!T) {
   return numerator
     .bind!(string, T)
     .divideBy(
@@ -23,7 +23,7 @@ Either!(string, T) divideBy(T)(T numerator, T denominator) if(!isEither!T) {
 }
 
 ///
-Either!(string, T) divideBy(T)(Either!(string, T) numerator, T denominator) if(!isEither!T) {
+Either!(string, T) divideBy(T)(Either!(string, T) numerator, T denominator) if(!isEitherStruct!T) {
   return numerator
     .divideBy(
       denominator.bind!(string, T)
