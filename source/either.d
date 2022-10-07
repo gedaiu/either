@@ -277,6 +277,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     return this;
   }
 
+  /// ditto
   This when(alias value, Func)(Func matcher) if(is(typeof(value) == Right) && isCallable!Func && Parameters!Func.length == 0) {
     if(isRight && value == right) {
       auto result = matcher();
@@ -286,6 +287,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     return this;
   }
 
+  /// ditto
   This when(alias value, T)(T newValue) if((is(T == Left) || is(T == Right)) && is(typeof(value) == Right)) {
     if(isRight && value == right) {
       return newValue.bind!This;
