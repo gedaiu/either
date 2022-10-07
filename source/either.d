@@ -39,13 +39,13 @@ bool canCheck(alias func, T)() {
 }
 
 ///
-template isEither(T) if(hasMember!(T, "isLeft") && hasMember!(T, "isRight")) {
-  enum isEither = true;
+template isEitherStruct(T) if(hasMember!(T, "isLeft") && hasMember!(T, "isRight")) {
+  enum isEitherStruct = true;
 }
 
 ///
-template isEither(T) if(!hasMember!(T, "isLeft") || !hasMember!(T, "isRight")) {
-  enum isEither = false;
+template isEitherStruct(T) if(!hasMember!(T, "isLeft") || !hasMember!(T, "isRight")) {
+  enum isEitherStruct = false;
 }
 
 struct Any {}
@@ -467,17 +467,17 @@ Either!(Any, T) bind(T)(T value) {
 }
 
 /// ditto
-Either!(Left, Right) bind(Left, Right, T)(T value) if(!isEither!Left && !isEither!Right && !isEither!T) {
+Either!(Left, Right) bind(Left, Right, T)(T value) if(!isEitherStruct!Left && !isEitherStruct!Right && !isEitherStruct!T) {
   return Either!(Left, Right)(value);
 }
 
 /// ditto
-auto bind(E, T)(T value) if(isEither!E) {
+auto bind(E, T)(T value) if(isEitherStruct!E) {
   return E(value);
 }
 
 /// ditto
-Either!(Left, Right) bind(Left, Right)(Either!(Left, Right) value) if(!isEither!Left && !isEither!Right) {
+Either!(Left, Right) bind(Left, Right)(Either!(Left, Right) value) if(!isEitherStruct!Left && !isEitherStruct!Right) {
   return value;
 }
 
