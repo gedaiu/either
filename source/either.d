@@ -57,6 +57,17 @@ template hasVoidReturn(Func) {
   }
 }
 
+/// Check if the matcher returns any of the provided return types
+bool returnsAnyOf(Matcher, ReturnTypes...)() {
+  static if(ReturnTypes.length == 0) {
+    return false;
+  } else static if(is(ReturnType!Matcher == ReturnTypes[0])) {
+    return true;
+  } else {
+    return returnsAnyOf!(Matcher, ReturnTypes[1..$]);
+  }
+}
+
 ///
 struct Any {}
 
@@ -104,19 +115,15 @@ struct Either(Left, Right) if(!is(Left == Right)) {
   }
 
   This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Left) && !hasVoidReturn!Matcher) {
-    static if(
-      !is(ReturnType!Matcher == This) &&
-      !is(ReturnType!Matcher == Left) &&
-      !is(ReturnType!Matcher == Right)
-    ) {
-      static assert(false, "when() returns `" ~ ReturnType!Func.stringof ~
-        "`. It must return `" ~ Left.stringof ~ "`, `" ~ Right.stringof ~ "` or `Either!(" ~ Left.stringof ~ ", " ~ Right.stringof ~ ")`");
-    } else {
+    static if(returnsAnyOf!(Matcher, This, Left, Right)) {
       if(isLeft) {
         return matcher(left).bind!(Left, Right);
       }
 
       return this;
+    } else {
+      static assert(false, "when() returns `" ~ ReturnType!Func.stringof ~
+        "`. It must return `" ~ Left.stringof ~ "`, `" ~ Right.stringof ~ "` or `Either!(" ~ Left.stringof ~ ", " ~ Right.stringof ~ ")`");
     }
   }
 
@@ -129,19 +136,15 @@ struct Either(Left, Right) if(!is(Left == Right)) {
   }
 
   This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Right) && !hasVoidReturn!Matcher) {
-    static if(
-      !is(ReturnType!Matcher == This) &&
-      !is(ReturnType!Matcher == Left) &&
-      !is(ReturnType!Matcher == Right)
-    ) {
-      static assert(false, "when() returns `" ~ ReturnType!Matcher.stringof ~
-        "`. It must return `" ~ Left.stringof ~ "`, `" ~ Right.stringof ~ "` or `Either!(" ~ Left.stringof ~ ", " ~ Right.stringof ~ ")`");
-    } else {
+    static if(returnsAnyOf!(Matcher, This, Left, Right)) {
       if(isRight) {
         return matcher(right).bind!(Left, Right);
       }
 
       return this;
+    } else {
+      static assert(false, "when() returns `" ~ ReturnType!Matcher.stringof ~
+        "`. It must return `" ~ Left.stringof ~ "`, `" ~ Right.stringof ~ "` or `Either!(" ~ Left.stringof ~ ", " ~ Right.stringof ~ ")`");
     }
   }
 
