@@ -1,6 +1,7 @@
 module either;
 
 import std.traits;
+import std.conv;
 
 version(unittest) {
   import fluent.asserts;
@@ -40,12 +41,12 @@ bool canCheck(alias Matcher, ParameterType)() {
 }
 
 /// Returns true if the given struct can be use as an Either struct
-template isEitherStruct(T) if(hasMember!(T, "left") && hasMember!(T, "right")) {
+template isEitherStruct(T) if(isAggregateType!T && hasMember!(T, "left") && hasMember!(T, "right")) {
   enum isEitherStruct = true;
 }
 
 /// ditto
-template isEitherStruct(T) if(!hasMember!(T, "left") || !hasMember!(T, "right")) {
+template isEitherStruct(T) if(isBuiltinType!T || !isAggregateType!(T) || !hasMember!(T, "left") || !hasMember!(T, "right")) {
   enum isEitherStruct = false;
 }
 
@@ -311,41 +312,51 @@ unittest {
 // Value matchers
 
 /// Match Left or Right values by value examples
-This when(alias value, Matcher, This: Either!(Left, Right), Left, Right)(This either, Matcher matcher) if(is(typeof(value) == Left) && isCallable!Matcher && Parameters!Matcher.length == 0) {
-  if(either.isLeft && value == either.left) {
-    auto result = matcher();
-    return result.bind!This;
+auto when(alias value, T, This: Either!(Left, Right), Left, Right)(This either, T newValue) if(!isCallable!value) {
+
+  static if(isCallable!newValue) {
+    auto result = newValue();
+
+    alias NewLeft = Left;
+    alias NewRight = Right;
+
+  } else static if(isEitherStruct!T) {
+    auto result = newValue.left;
+
+    alias NewLeft = typeof(result);
+    alias NewRight = Right;
+  } else {
+    auto result = newValue;
+
+    alias NewLeft = Left;
+    alias NewRight = Right;
   }
 
-  return either;
-}
+  alias ValueType = typeof(value);
+  alias ResultType = typeof(result);
 
-/// ditto
-This when(alias value, T, This: Either!(Left, Right), Left, Right)(This either, T newValue) if((is(T == Left) || is(T == Right)) && is(typeof(value) == Left)) {
-  if(either.isLeft && value == either.left) {
-    return newValue.bind!This;
+  enum isLeftNewValue = is(ResultType == NewLeft);
+  enum isRightNewValue = is(ResultType == NewRight);
+
+  static if(!isLeftNewValue && !isRightNewValue) {
+    static assert(false, `Invalid new value type: "` ~ ResultType.stringof ~ `". Expected to be "` ~ Left.stringof ~ `", "` ~ Right.stringof ~ `" or Either.`);
   }
 
-  return either;
-}
+  static if(is(ValueType == Right)) {
+    if(either.isRight && value == either.right) {
+      return result.bind!(NewLeft, NewRight);
+    }
 
-/// ditto
-This when(alias value, Func, This: Either!(Left, Right), Left, Right)(This either, Func matcher) if(is(typeof(value) == Right) && isCallable!Func && Parameters!Func.length == 0) {
-  if(either.isRight && value == either.right) {
-    auto result = matcher();
-    return result.bind!This;
+    return either.right.bind!(NewLeft, NewRight);
   }
 
-  return either;
-}
+  static if(is(ValueType == Left)) {
+    if(either.isLeft && value == either.left) {
+      return result.bind!(NewLeft, NewRight);
+    }
 
-/// ditto
-This when(alias value, T, This: Either!(Left, Right), Left, Right)(This either, T newValue) if((is(T == Left) || is(T == Right)) && is(typeof(value) == Right)) {
-  if(either.isRight && value == either.right) {
-    return newValue.bind!This;
+    return either.left.bind!(NewLeft, NewRight);
   }
-
-  return either;
 }
 
 /// it is called when the Either value matches the when!Left value
@@ -474,6 +485,18 @@ unittest {
 
   result.isRight.should.equal(true);
   message.should.equal(true);
+}
+
+/// it returns the new Either type
+unittest {
+  auto either = 5.bind;
+
+  expect(typeof(either).stringof).to.equal("Either!(Any, int)");
+
+  auto result = either.when!(5) ("The value is 5!".bind!(string, int));
+
+  expect(typeof(result).stringof).to.equal("Either!(string, int)");
+  expect(result.left).to.equal("The value is 5!");
 }
 
 // function matchers
