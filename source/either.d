@@ -40,12 +40,12 @@ bool canCheck(alias Matcher, ParameterType)() {
 }
 
 /// Returns true if the given struct can be use as an Either struct
-template isEitherStruct(T) if(hasMember!(T, "isLeft") && hasMember!(T, "isRight")) {
+template isEitherStruct(T) if(hasMember!(T, "left") && hasMember!(T, "right")) {
   enum isEitherStruct = true;
 }
 
 /// ditto
-template isEitherStruct(T) if(!hasMember!(T, "isLeft") || !hasMember!(T, "isRight")) {
+template isEitherStruct(T) if(!hasMember!(T, "left") || !hasMember!(T, "right")) {
   enum isEitherStruct = false;
 }
 
@@ -100,49 +100,11 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     side = EitherSide.Right;
   }
 
-  /// returns true when the Left type is stored
-  bool isLeft() {
-    return side == EitherSide.Left;
-  }
-
-  /// isLeft is true when the struct is setup with the left type
-  unittest {
-    auto either = Either!(int, bool)(1);
-
-    either.isLeft.should.equal(true);
-  }
-
-  /// isLeft is false when the struct is setup with the right type
-  unittest {
-    auto either = Either!(int, bool)(true);
-
-    either.isLeft.should.equal(false);
-  }
-
-  /// returns true when the Right type is stored
-  bool isRight() {
-    return side == EitherSide.Right;
-  }
-
-  /// isRight is false when the struct is setup with the left type
-  unittest {
-    auto either = Either!(int, bool)(1);
-
-    either.isRight.should.equal(false);
-  }
-
-  /// isRight is true when the struct is setup with the right type
-  unittest {
-    auto either = Either!(int, bool)(true);
-
-    either.isRight.should.equal(true);
-  }
-
   // Type matchers
 
   /// Match Left or Right values using types
   This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Left) && hasVoidReturn!Matcher) {
-    if(isLeft) {
+    if(this.isLeft) {
       matcher(left);
     }
 
@@ -152,7 +114,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
   /// ditto
   This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Left) && !hasVoidReturn!Matcher) {
     static if(returnsAnyOf!(Matcher, This, Left, Right)) {
-      if(isLeft) {
+      if(this.isLeft) {
         return matcher(left).bind!(Left, Right);
       }
 
@@ -165,7 +127,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
   /// ditto
   This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Right) && hasVoidReturn!Matcher) {
-    if(isRight) {
+    if(this.isRight) {
       matcher(right);
     }
 
@@ -175,7 +137,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
   /// ditto
   This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Right) && !hasVoidReturn!Matcher) {
     static if(returnsAnyOf!(Matcher, This, Left, Right)) {
-      if(isRight) {
+      if(this.isRight) {
         return matcher(right).bind!(Left, Right);
       }
 
@@ -260,7 +222,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
   /// Match Left or Right values by value examples
   This when(alias value, Matcher)(Matcher matcher) if(is(typeof(value) == Left) && isCallable!Matcher && Parameters!Matcher.length == 0) {
-    if(isLeft && value == left) {
+    if(this.isLeft && value == left) {
       auto result = matcher();
       return result.bind!This;
     }
@@ -270,7 +232,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
   /// ditto
   This when(alias value, T)(T newValue) if((is(T == Left) || is(T == Right)) && is(typeof(value) == Left)) {
-    if(isLeft && value == left) {
+    if(this.isLeft && value == left) {
       return newValue.bind!This;
     }
 
@@ -279,7 +241,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
   /// ditto
   This when(alias value, Func)(Func matcher) if(is(typeof(value) == Right) && isCallable!Func && Parameters!Func.length == 0) {
-    if(isRight && value == right) {
+    if(this.isRight && value == right) {
       auto result = matcher();
       return result.bind!This;
     }
@@ -289,7 +251,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
   /// ditto
   This when(alias value, T)(T newValue) if((is(T == Left) || is(T == Right)) && is(typeof(value) == Right)) {
-    if(isRight && value == right) {
+    if(this.isRight && value == right) {
       return newValue.bind!This;
     }
 
@@ -428,7 +390,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
   /// Match Left or Right values using functions
   This when(alias check, Matcher)(Matcher matcher) if(canCheck!(check, Right) && isCallable!Matcher) {
-    if(isRight && check(right)) {
+    if(this.isRight && check(right)) {
       static if(Parameters!Matcher.length == 0) {
         return matcher().bind!This;
       } else static if(isCallableWith!(Matcher, Right)) {
@@ -443,7 +405,7 @@ struct Either(Left, Right) if(!is(Left == Right)) {
 
   /// ditto
   This when(alias check, Matcher)(Matcher matcher) if(canCheck!(check, Left) && isCallable!Matcher) {
-    if(isLeft && check(left)) {
+    if(this.isLeft && check(left)) {
       static if(Parameters!Matcher.length == 0) {
         return matcher().bind!This;
       } else static if(isCallableWith!(Matcher, Left)) {
@@ -459,13 +421,13 @@ struct Either(Left, Right) if(!is(Left == Right)) {
   /// ditto
   This when(alias check, T)(T newValue) if((is(T == Right) || is(T == Left)) && isCallable!check) {
     static if(canCheck!(check, Left)) {
-      if(isLeft && check(left)) {
+      if(this.isLeft && check(left)) {
         return newValue.bind!This;
       }
     }
 
     static if(canCheck!(check, Right)) {
-      if(isRight && check(right)) {
+      if(this.isRight && check(right)) {
         return newValue.bind!This;
       }
     }
@@ -540,6 +502,44 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     result.isLeft.should.equal(true);
     message.should.equal(2);
   }
+}
+
+/// returns true when the Left type is stored
+bool isLeft(T : Either!(Left, Right), Left, Right)(T either) {
+  return either.side == EitherSide.Left;
+}
+
+/// isLeft is true when the struct is setup with the left type
+unittest {
+  auto either = Either!(int, bool)(1);
+
+  either.isLeft.should.equal(true);
+}
+
+/// isLeft is false when the struct is setup with the right type
+unittest {
+  auto either = Either!(int, bool)(true);
+
+  either.isLeft.should.equal(false);
+}
+
+/// returns true when the Right type is stored
+bool isRight(T : Either!(Left, Right), Left, Right)(T either) {
+  return either.side == EitherSide.Right;
+}
+
+/// isRight is false when the struct is setup with the left type
+unittest {
+  auto either = Either!(int, bool)(1);
+
+  either.isRight.should.equal(false);
+}
+
+/// isRight is true when the struct is setup with the right type
+unittest {
+  auto either = Either!(int, bool)(true);
+
+  either.isRight.should.equal(true);
 }
 
 version(unittest) {
