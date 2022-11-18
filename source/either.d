@@ -99,409 +99,6 @@ struct Either(Left, Right) if(!is(Left == Right)) {
     right = value;
     side = EitherSide.Right;
   }
-
-  // Type matchers
-
-  /// Match Left or Right values using types
-  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Left) && hasVoidReturn!Matcher) {
-    if(this.isLeft) {
-      matcher(left);
-    }
-
-    return this;
-  }
-
-  /// ditto
-  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Left) && !hasVoidReturn!Matcher) {
-    static if(returnsAnyOf!(Matcher, This, Left, Right)) {
-      if(this.isLeft) {
-        return matcher(left).bind!(Left, Right);
-      }
-
-      return this;
-    } else {
-      static assert(false, "when() returns `" ~ ReturnType!Matcher.stringof ~
-        "`. It must return `" ~ Left.stringof ~ "`, `" ~ Right.stringof ~ "` or `Either!(" ~ Left.stringof ~ ", " ~ Right.stringof ~ ")`");
-    }
-  }
-
-  /// ditto
-  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Right) && hasVoidReturn!Matcher) {
-    if(this.isRight) {
-      matcher(right);
-    }
-
-    return this;
-  }
-
-  /// ditto
-  This when(Matcher)(Matcher matcher) if(isCallableWith!(Matcher, Right) && !hasVoidReturn!Matcher) {
-    static if(returnsAnyOf!(Matcher, This, Left, Right)) {
-      if(this.isRight) {
-        return matcher(right).bind!(Left, Right);
-      }
-
-      return this;
-    } else {
-      static assert(false, "when() returns `" ~ ReturnType!Matcher.stringof ~
-        "`. It must return `" ~ Left.stringof ~ "`, `" ~ Right.stringof ~ "` or `Either!(" ~ Left.stringof ~ ", " ~ Right.stringof ~ ")`");
-    }
-  }
-
-  /// ditto
-  This when(Matcher)(Matcher matcher) if(!isCallableWith!(Matcher, Left) && !isCallableWith!(Matcher, Right)) {
-    return this;
-  }
-
-  /// 'when' is called with the left value function when the monad isLeft is true
-  unittest {
-    auto either = Either!(int, bool)(1);
-    string result = "none";
-
-    either
-      .when((int value) {
-        result = "left";
-      })
-      .when((bool value) {
-        result = "right";
-      });
-
-    result.should.equal("left");
-  }
-
-  /// it calls the 'when' with right value function when the monad isRight is true
-  unittest {
-    auto either = Either!(int, bool)(true);
-    string result = "none";
-
-    either
-      .when((int value) {
-        result = "left";
-      })
-      .when((bool value) {
-        result = "right";
-      });
-
-    result.should.equal("right");
-  }
-
-  /// it does not call the 'when' function when the types don't match
-  unittest {
-    auto either = Either!(int, bool)(true);
-    string result = "none";
-
-    either
-      .when((double value) {
-        result = "double";
-      })
-      .when((string value) {
-        result = "string";
-      });
-
-    result.should.equal("none");
-  }
-
-  /// it returns the binded value when the 'when' function returns
-  unittest {
-    auto either = Either!(int, bool)(1);
-    bool message;
-
-    auto result = either
-      .when((int value) {
-        return true;
-      })
-      .when((bool value) {
-        message = value;
-      });
-
-    result.isRight.should.equal(true);
-    message.should.equal(true);
-  }
-
-  // value matchers
-
-  /// Match Left or Right values by value examples
-  This when(alias value, Matcher)(Matcher matcher) if(is(typeof(value) == Left) && isCallable!Matcher && Parameters!Matcher.length == 0) {
-    if(this.isLeft && value == left) {
-      auto result = matcher();
-      return result.bind!This;
-    }
-
-    return this;
-  }
-
-  /// ditto
-  This when(alias value, T)(T newValue) if((is(T == Left) || is(T == Right)) && is(typeof(value) == Left)) {
-    if(this.isLeft && value == left) {
-      return newValue.bind!This;
-    }
-
-    return this;
-  }
-
-  /// ditto
-  This when(alias value, Func)(Func matcher) if(is(typeof(value) == Right) && isCallable!Func && Parameters!Func.length == 0) {
-    if(this.isRight && value == right) {
-      auto result = matcher();
-      return result.bind!This;
-    }
-
-    return this;
-  }
-
-  /// ditto
-  This when(alias value, T)(T newValue) if((is(T == Left) || is(T == Right)) && is(typeof(value) == Right)) {
-    if(this.isRight && value == right) {
-      return newValue.bind!This;
-    }
-
-    return this;
-  }
-
-  /// it is called when the Either value matches the when!Left value
-  unittest {
-    auto either = Either!(int, bool)(1);
-    bool message;
-
-    auto result = either
-      .when!1 ({
-        return true;
-      })
-      .when((bool value) {
-        message = value;
-      });
-
-    result.isRight.should.equal(true);
-    message.should.equal(true);
-  }
-
-  /// it is not called when the value matches the Left
-  unittest {
-    auto either = Either!(int, bool)(1);
-    bool message;
-
-    auto result = either
-      .when!11 ({
-        return true;
-      })
-      .when((bool value) {
-        message = value;
-      });
-
-    result.isLeft.should.equal(true);
-    message.should.equal(false);
-  }
-
-  /// it is called when the value matches the Right
-  unittest {
-    auto either = Either!(int, bool)(true);
-    int message;
-
-    auto result = either
-      .when!true ({
-        return 2;
-      })
-      .when((int value) {
-        message = value;
-      });
-
-    result.isLeft.should.equal(true);
-    message.should.equal(2);
-  }
-
-  /// it does not call the 'when' function when the value matches the Left
-  unittest {
-    auto either = Either!(int, bool)(true);
-    bool message;
-
-    auto result = either
-      .when!false ({
-        return 3;
-      })
-      .when((bool value) {
-        message = value;
-      });
-
-    result.isRight.should.equal(true);
-    message.should.equal(true);
-  }
-
-  /// it returns the 'when' value when the value matches the Right
-  unittest {
-    auto either = Either!(int, bool)(true);
-    int message;
-
-    auto result = either
-      .when!true (2)
-      .when((int value) {
-        message = value;
-      });
-
-    result.isLeft.should.equal(true);
-    message.should.equal(2);
-  }
-
-  /// it does not return the 'when' value when the value is not matched
-  unittest {
-    auto either = Either!(int, bool)(2);
-    bool message;
-
-    auto result = either
-      .when!3 (true)
-      .when((bool value) {
-        message = value;
-      });
-
-    result.isLeft.should.equal(true);
-    message.should.equal(false);
-  }
-
-  /// it does not return the 'when' value when the value is not matched
-  unittest {
-    auto either = Either!(int, bool)(true);
-    bool message;
-
-    auto result = either
-      .when!false (3)
-      .when((bool value) {
-        message = value;
-      });
-
-    result.isRight.should.equal(true);
-    message.should.equal(true);
-  }
-
-  /// it returns the 'when' value when the value matches the Left
-  unittest {
-    auto either = Either!(int, bool)(1);
-    bool message;
-
-    auto result = either
-      .when!1 (true)
-      .when((bool value) {
-        message = value;
-      });
-
-    result.isRight.should.equal(true);
-    message.should.equal(true);
-  }
-
-  // function matchers
-
-  /// Match Left or Right values using functions
-  This when(alias check, Matcher)(Matcher matcher) if(canCheck!(check, Right) && isCallable!Matcher) {
-    if(this.isRight && check(right)) {
-      static if(Parameters!Matcher.length == 0) {
-        return matcher().bind!This;
-      } else static if(isCallableWith!(Matcher, Right)) {
-        return matcher(right).bind!This;
-      } else {
-        static assert(false, "when() will never match. It checks `" ~ Right.stringof ~ "` values and it handles `" ~ Parameters!Matcher[0].stringof ~ "` values. The types must be the same.");
-      }
-    }
-
-    return this;
-  }
-
-  /// ditto
-  This when(alias check, Matcher)(Matcher matcher) if(canCheck!(check, Left) && isCallable!Matcher) {
-    if(this.isLeft && check(left)) {
-      static if(Parameters!Matcher.length == 0) {
-        return matcher().bind!This;
-      } else static if(isCallableWith!(Matcher, Left)) {
-        return matcher(left).bind!This;
-      } else {
-        static assert(false, "when() will never match. It checks `" ~ Left.stringof ~ "` values and it handles `" ~ Parameters!Matcher[0].stringof ~ "` values. The types must be the same.");
-      }
-    }
-
-    return this;
-  }
-
-  /// ditto
-  This when(alias check, T)(T newValue) if((is(T == Right) || is(T == Left)) && isCallable!check) {
-    static if(canCheck!(check, Left)) {
-      if(this.isLeft && check(left)) {
-        return newValue.bind!This;
-      }
-    }
-
-    static if(canCheck!(check, Right)) {
-      if(this.isRight && check(right)) {
-        return newValue.bind!This;
-      }
-    }
-
-    return this;
-  }
-
-  /// it calls the 'when' function when the function check returns true for Right value
-  unittest {
-    auto either = Either!(int, bool)(true);
-    int message;
-
-    auto result = either
-      .when!alwaysTrue ({
-        return 2;
-      })
-      .when((int value) {
-        message = value;
-      });
-
-    result.isLeft.should.equal(true);
-    message.should.equal(2);
-  }
-
-  /// it calls the 'when' with the value function when the function check returns true for Right value
-  unittest {
-    auto either = Either!(int, bool)(true);
-    int message;
-
-    auto result = either
-      .when!alwaysTrue ((bool value) {
-        return 2;
-      })
-      .when((int value) {
-        message = value;
-      });
-
-    result.isLeft.should.equal(true);
-    message.should.equal(2);
-  }
-
-  /// it does not call the 'when' function when the function check returns false for Right value
-  unittest {
-    auto either = Either!(int, bool)(true);
-    bool message;
-
-    auto result = either
-      .when!alwaysFalse ({
-        return 2;
-      })
-      .when((bool value) {
-        message = value;
-      });
-
-    result.isRight.should.equal(true);
-    message.should.equal(true);
-  }
-
-  /// it calls the 'when' function when the function check returns true for Left value
-  unittest {
-    auto either = Either!(int, bool)(8);
-    int message;
-
-    auto result = either
-      .when!alwaysTrueInt ({
-        return 2;
-      })
-      .when((int value) {
-        message = value;
-      });
-
-    result.isLeft.should.equal(true);
-    message.should.equal(2);
-  }
 }
 
 /// returns true when the Left type is stored
@@ -590,4 +187,408 @@ unittest {
 
   result.isLeft.should.equal(false);
   result.isRight.should.equal(true);
+}
+
+// Type matchers
+
+/// Match Left or Right values using types
+T when(Matcher, T: Either!(Left, Right), Left, Right)(T either, Matcher matcher) if(isCallableWith!(Matcher, Left) && hasVoidReturn!Matcher) {
+  if(either.isLeft) {
+    matcher(either.left);
+  }
+
+  return either;
+}
+
+/// ditto
+This when(Matcher, This: Either!(Left, Right), Left, Right)(This either, Matcher matcher) if(isCallableWith!(Matcher, Left) && !hasVoidReturn!Matcher) {
+  static if(returnsAnyOf!(Matcher, This, Left, Right)) {
+    if(either.isLeft) {
+      return matcher(either.left).bind!(Left, Right);
+    }
+
+    return either;
+  } else {
+    static assert(false, "when() returns `" ~ ReturnType!Matcher.stringof ~
+      "`. It must return `" ~ Left.stringof ~ "`, `" ~ Right.stringof ~ "` or `Either!(" ~ Left.stringof ~ ", " ~ Right.stringof ~ ")`");
+  }
+}
+
+/// ditto
+T when(Matcher, T: Either!(Left, Right), Left, Right)(T either, Matcher matcher) if(isCallableWith!(Matcher, Right) && hasVoidReturn!Matcher) {
+  if(either.isRight) {
+    matcher(either.right);
+  }
+
+  return either;
+}
+
+/// ditto
+This when(Matcher, This: Either!(Left, Right), Left, Right)(This either, Matcher matcher) if(isCallableWith!(Matcher, Right) && !hasVoidReturn!Matcher) {
+  static if(returnsAnyOf!(Matcher, This, Left, Right)) {
+    if(either.isRight) {
+      return matcher(either.right).bind!(Left, Right);
+    }
+
+    return either;
+  } else {
+    static assert(false, "when() returns `" ~ ReturnType!Matcher.stringof ~
+      "`. It must return `" ~ Left.stringof ~ "`, `" ~ Right.stringof ~ "` or `Either!(" ~ Left.stringof ~ ", " ~ Right.stringof ~ ")`");
+  }
+}
+
+/// ditto
+T when(Matcher, T: Either!(Left, Right), Left, Right)(T either, Matcher matcher) if(!isCallableWith!(Matcher, Left) && !isCallableWith!(Matcher, Right)) {
+  return either;
+}
+
+/// 'when' is called with the left value function when the monad isLeft is true
+unittest {
+  auto either = Either!(int, bool)(1);
+  string result = "none";
+
+  either
+    .when((int value) {
+      result = "left";
+    })
+    .when((bool value) {
+      result = "right";
+    });
+
+  result.should.equal("left");
+}
+
+/// it calls the 'when' with right value function when the monad isRight is true
+unittest {
+  auto either = Either!(int, bool)(true);
+  string result = "none";
+
+  either
+    .when((int value) {
+      result = "left";
+    })
+    .when((bool value) {
+      result = "right";
+    });
+
+  result.should.equal("right");
+}
+
+/// it does not call the 'when' function when the types don't match
+unittest {
+  auto either = Either!(int, bool)(true);
+  string result = "none";
+
+  either
+    .when((double value) {
+      result = "double";
+    })
+    .when((string value) {
+      result = "string";
+    });
+
+  result.should.equal("none");
+}
+
+/// it returns the binded value when the 'when' function returns
+unittest {
+  auto either = Either!(int, bool)(1);
+  bool message;
+
+  auto result = either
+    .when((int value) {
+      return true;
+    })
+    .when((bool value) {
+      message = value;
+    });
+
+  result.isRight.should.equal(true);
+  message.should.equal(true);
+}
+
+
+// Value matchers
+
+/// Match Left or Right values by value examples
+This when(alias value, Matcher, This: Either!(Left, Right), Left, Right)(This either, Matcher matcher) if(is(typeof(value) == Left) && isCallable!Matcher && Parameters!Matcher.length == 0) {
+  if(either.isLeft && value == either.left) {
+    auto result = matcher();
+    return result.bind!This;
+  }
+
+  return either;
+}
+
+/// ditto
+This when(alias value, T, This: Either!(Left, Right), Left, Right)(This either, T newValue) if((is(T == Left) || is(T == Right)) && is(typeof(value) == Left)) {
+  if(either.isLeft && value == either.left) {
+    return newValue.bind!This;
+  }
+
+  return either;
+}
+
+/// ditto
+This when(alias value, Func, This: Either!(Left, Right), Left, Right)(This either, Func matcher) if(is(typeof(value) == Right) && isCallable!Func && Parameters!Func.length == 0) {
+  if(either.isRight && value == either.right) {
+    auto result = matcher();
+    return result.bind!This;
+  }
+
+  return either;
+}
+
+/// ditto
+This when(alias value, T, This: Either!(Left, Right), Left, Right)(This either, T newValue) if((is(T == Left) || is(T == Right)) && is(typeof(value) == Right)) {
+  if(either.isRight && value == either.right) {
+    return newValue.bind!This;
+  }
+
+  return either;
+}
+
+/// it is called when the Either value matches the when!Left value
+unittest {
+  auto either = Either!(int, bool)(1);
+  bool message;
+
+  auto result = either
+    .when!1 ({
+      return true;
+    })
+    .when((bool value) {
+      message = value;
+    });
+
+  result.isRight.should.equal(true);
+  message.should.equal(true);
+}
+
+/// it is not called when the value matches the Left
+unittest {
+  auto either = Either!(int, bool)(1);
+  bool message;
+
+  auto result = either
+    .when!11 ({
+      return true;
+    })
+    .when((bool value) {
+      message = value;
+    });
+
+  result.isLeft.should.equal(true);
+  message.should.equal(false);
+}
+
+/// it is called when the value matches the Right
+unittest {
+  auto either = Either!(int, bool)(true);
+  int message;
+
+  auto result = either
+    .when!true ({
+      return 2;
+    })
+    .when((int value) {
+      message = value;
+    });
+
+  result.isLeft.should.equal(true);
+  message.should.equal(2);
+}
+
+/// it does not call the 'when' function when the value matches the Left
+unittest {
+  auto either = Either!(int, bool)(true);
+  bool message;
+
+  auto result = either
+    .when!false ({
+      return 3;
+    })
+    .when((bool value) {
+      message = value;
+    });
+
+  result.isRight.should.equal(true);
+  message.should.equal(true);
+}
+
+/// it returns the 'when' value when the value matches the Right
+unittest {
+  auto either = Either!(int, bool)(true);
+  int message;
+
+  auto result = either
+    .when!true (2)
+    .when((int value) {
+      message = value;
+    });
+
+  result.isLeft.should.equal(true);
+  message.should.equal(2);
+}
+
+/// it does not return the 'when' value when the value is not matched
+unittest {
+  auto either = Either!(int, bool)(2);
+  bool message;
+
+  auto result = either
+    .when!3 (true)
+    .when((bool value) {
+      message = value;
+    });
+
+  result.isLeft.should.equal(true);
+  message.should.equal(false);
+}
+
+/// it does not return the 'when' value when the value is not matched
+unittest {
+  auto either = Either!(int, bool)(true);
+  bool message;
+
+  auto result = either
+    .when!false (3)
+    .when((bool value) {
+      message = value;
+    });
+
+  result.isRight.should.equal(true);
+  message.should.equal(true);
+}
+
+/// it returns the 'when' value when the value matches the Left
+unittest {
+  auto either = Either!(int, bool)(1);
+  bool message;
+
+  auto result = either
+    .when!1 (true)
+    .when((bool value) {
+      message = value;
+    });
+
+  result.isRight.should.equal(true);
+  message.should.equal(true);
+}
+
+// function matchers
+
+/// Match Left or Right values using functions
+This when(alias check, Matcher, This: Either!(Left, Right), Left, Right)(This either, Matcher matcher) if(canCheck!(check, Right) && isCallable!Matcher) {
+  if(either.isRight && check(either.right)) {
+    static if(Parameters!Matcher.length == 0) {
+      return matcher().bind!This;
+    } else static if(isCallableWith!(Matcher, Right)) {
+      return matcher(either.right).bind!This;
+    } else {
+      static assert(false, "when() will never match. It checks `" ~ Right.stringof ~ "` values and it handles `" ~ Parameters!Matcher[0].stringof ~ "` values. The types must be the same.");
+    }
+  }
+
+  return either;
+}
+
+/// ditto
+This when(alias check, Matcher, This: Either!(Left, Right), Left, Right)(This either, Matcher matcher) if(canCheck!(check, Left) && isCallable!Matcher) {
+  if(either.isLeft && check(either.left)) {
+    static if(Parameters!Matcher.length == 0) {
+      return matcher().bind!This;
+    } else static if(isCallableWith!(Matcher, Left)) {
+      return matcher(either.left).bind!This;
+    } else {
+      static assert(false, "when() will never match. It checks `" ~ Left.stringof ~ "` values and it handles `" ~ Parameters!Matcher[0].stringof ~ "` values. The types must be the same.");
+    }
+  }
+
+  return either;
+}
+
+/// ditto
+This when(alias check, T, This: Either!(Left, Right), Left, Right)(This either, T newValue) if((is(T == Right) || is(T == Left)) && isCallable!check) {
+  static if(canCheck!(check, Left)) {
+    if(either.isLeft && check(either.left)) {
+      return newValue.bind!This;
+    }
+  }
+
+  static if(canCheck!(check, Right)) {
+    if(either.isRight && check(either.right)) {
+      return newValue.bind!This;
+    }
+  }
+
+  return either;
+}
+
+/// it calls the 'when' function when the function check returns true for Right value
+unittest {
+  auto either = Either!(int, bool)(true);
+  int message;
+
+  auto result = either
+    .when!alwaysTrue ({
+      return 2;
+    })
+    .when((int value) {
+      message = value;
+    });
+
+  result.isLeft.should.equal(true);
+  message.should.equal(2);
+}
+
+/// it calls the 'when' with the value function when the function check returns true for Right value
+unittest {
+  auto either = Either!(int, bool)(true);
+  int message;
+
+  auto result = either
+    .when!alwaysTrue ((bool value) {
+      return 2;
+    })
+    .when((int value) {
+      message = value;
+    });
+
+  result.isLeft.should.equal(true);
+  message.should.equal(2);
+}
+
+/// it does not call the 'when' function when the function check returns false for Right value
+unittest {
+  auto either = Either!(int, bool)(true);
+  bool message;
+
+  auto result = either
+    .when!alwaysFalse ({
+      return 2;
+    })
+    .when((bool value) {
+      message = value;
+    });
+
+  result.isRight.should.equal(true);
+  message.should.equal(true);
+}
+
+/// it calls the 'when' function when the function check returns true for Left value
+unittest {
+  auto either = Either!(int, bool)(8);
+  int message;
+
+  auto result = either
+    .when!alwaysTrueInt ({
+      return 2;
+    })
+    .when((int value) {
+      message = value;
+    });
+
+  result.isLeft.should.equal(true);
+  message.should.equal(2);
 }
