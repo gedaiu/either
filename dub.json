@@ -5,9 +5,10 @@
   "configurations": [
     {
       "name": "unittest",
-      "targetType": "executable",
+      "targetType": "autodetect",
       "dependencies": {
-        "fluent-asserts": "*"
+        "fluent-asserts": "*",
+        "trial": "0.8.0-beta.1"
       }
     }
   ],
