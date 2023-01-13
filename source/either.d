@@ -84,6 +84,45 @@ auto callWith(MapFunction, This: Either!(Left, Right), Left, Right)(This either,
   }
 }
 
+///
+auto callIfCan(MapFunction, This: Either!(Left, Right), Left, Right)(This either, MapFunction mapFunction) if(isCallable!MapFunction) {
+  This result = either;
+
+  static if(Parameters!MapFunction.length == 0) {
+    static if(hasVoidReturn!MapFunction) {
+      mapFunction();
+    } else {
+      result = mapFunction().bind!This;
+    }
+  }
+
+  static if(Parameters!MapFunction.length == 1 && isCallableWith!(MapFunction, Left)) {
+    if(either.isLeft) {
+      static if(hasVoidReturn!MapFunction) {
+        mapFunction(either.left);
+      } else {
+        result = mapFunction(either.left).bind!This;
+      }
+    }
+  }
+
+  static if(Parameters!MapFunction.length == 1 && isCallableWith!(MapFunction, Right)) {
+    if(either.isRight) {
+      static if(hasVoidReturn!MapFunction) {
+        mapFunction(either.right);
+      } else {
+        result = mapFunction(either.right).bind!This;
+      }
+    }
+  }
+
+  static if(Parameters!MapFunction.length > 1) {
+    static assert(false, "The map function must get none or 1 argument.");
+  }
+
+  return result;
+}
+
 /// Returns true if the given struct can be use as an Either struct
 template isEitherStruct(T) if(isAggregateType!T && hasMember!(T, "left") && hasMember!(T, "right")) {
   enum isEitherStruct = true;
@@ -207,7 +246,7 @@ version(unittest) {
 }
 
 /// Wraps a value as an Either monad
-Either!(Any, T) bind(T)(T value) {
+Either!(Any, T) bind(T)(T value) if(!isEitherStruct!T) {
   return Either!(Any, T)(value);
 }
 
@@ -217,8 +256,18 @@ Either!(Left, Right) bind(Left, Right, T)(T value) if(!isEitherStruct!Left && !i
 }
 
 /// ditto
-auto bind(E, T)(T value) if(isEitherStruct!E) {
+auto bind(E, T)(T value) if(isEitherStruct!E && !isEitherStruct!T) {
   return E(value);
+}
+
+/// ditto
+auto bind(T)(T value) if(isEitherStruct!T) {
+  return value;
+}
+
+/// ditto
+void bind(T)() if(isEitherStruct!T) {
+  static assert(false, "You can't bind void.");
 }
 
 /// ditto
@@ -237,54 +286,8 @@ unittest {
 // Type matchers
 
 /// Match Left or Right values using types
-T when(Matcher, T: Either!(Left, Right), Left, Right)(T either, Matcher matcher) if(isCallableWith!(Matcher, Left) && hasVoidReturn!Matcher) {
-  if(either.isLeft) {
-    matcher(either.left);
-  }
-
-  return either;
-}
-
-/// ditto
-This when(Matcher, This: Either!(Left, Right), Left, Right)(This either, Matcher matcher) if(isCallableWith!(Matcher, Left) && !hasVoidReturn!Matcher) {
-  static if(returnsAnyOf!(Matcher, This, Left, Right)) {
-    if(either.isLeft) {
-      return matcher(either.left).bind!(Left, Right);
-    }
-
-    return either;
-  } else {
-    static assert(false, "when() returns `" ~ ReturnType!Matcher.stringof ~
-      "`. It must return `" ~ Left.stringof ~ "`, `" ~ Right.stringof ~ "` or `Either!(" ~ Left.stringof ~ ", " ~ Right.stringof ~ ")`");
-  }
-}
-
-/// ditto
-T when(Matcher, T: Either!(Left, Right), Left, Right)(T either, Matcher matcher) if(isCallableWith!(Matcher, Right) && hasVoidReturn!Matcher) {
-  if(either.isRight) {
-    matcher(either.right);
-  }
-
-  return either;
-}
-
-/// ditto
-This when(Matcher, This: Either!(Left, Right), Left, Right)(This either, Matcher matcher) if(isCallableWith!(Matcher, Right) && !hasVoidReturn!Matcher) {
-  static if(returnsAnyOf!(Matcher, This, Left, Right)) {
-    if(either.isRight) {
-      return matcher(either.right).bind!(Left, Right);
-    }
-
-    return either;
-  } else {
-    static assert(false, "when() returns `" ~ ReturnType!Matcher.stringof ~
-      "`. It must return `" ~ Left.stringof ~ "`, `" ~ Right.stringof ~ "` or `Either!(" ~ Left.stringof ~ ", " ~ Right.stringof ~ ")`");
-  }
-}
-
-/// ditto
-T when(Matcher, T: Either!(Left, Right), Left, Right)(T either, Matcher matcher) if(!isCallableWith!(Matcher, Left) && !isCallableWith!(Matcher, Right)) {
-  return either;
+This when(Matcher, This: Either!(Left, Right), Left, Right)(This either, Matcher matcher) if(isCallable!Matcher) {
+  return either.callIfCan(matcher);
 }
 
 /// 'when' is called with the left value function when the monad isLeft is true
