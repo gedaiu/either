@@ -18,7 +18,7 @@ Either!(string, T) divideBy(T)(T numerator, T denominator) if(!isEitherStruct!T)
   return numerator
     .bind!(string, T)
     .divideBy(
-      denominator.bind!(string, T)
+      denominator.bind
     );
 }
 
@@ -35,7 +35,7 @@ Either!(string, NumericType) divideBy(U, V, NumericType)(Either!(U, NumericType)
   enum NumericType zero = 0;
 
   return denominator
-    .when!(zero) ("Division by zero!")
+    .when!(zero) ("Division by zero!".bindLeft)
     .when!(isNaN!NumericType) ("Denominator is NaN.")
     .when((NumericType a) =>
       numerator

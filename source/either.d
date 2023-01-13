@@ -154,7 +154,55 @@ bool returnsAnyOf(Matcher, ReturnTypes...)() {
 }
 
 ///
-struct Any {}
+template EitherTypeOf(T, Left, Right) {
+  static if(isEitherStruct!T) {
+    alias EitherTypeOf = T;
+  } else static if(isCallable!T) {
+    alias EitherTypeOf = EitherTypeOf!(ReturnType!T, Left, Right);
+  } else static if(is(T == Left)) {
+    alias EitherTypeOf = Either!(T, Any);
+  } else {
+    alias EitherTypeOf = Either!(Any, T);
+  }
+}
+
+template PickDefinedType(A, B) {
+  static if(is(A == B) || is(B == Any)) {
+    alias PickDefinedType = A;
+  } else static if(is(A == Any)) {
+    alias PickDefinedType = B;
+  } else {
+    static assert(false, A.stringof ~ " is not compatible with " ~ B.stringof);
+  }
+}
+
+///
+template NewLeft(This: Either!(Left, Right), That, Left, Right) {
+  alias EitherThisLeft = Left;
+  alias EitherThatLeft = typeof(EitherTypeOf!(That, Left, Right).left);
+
+  alias NewLeft = PickDefinedType!(EitherThisLeft, EitherThatLeft);
+}
+
+///
+template NewRight(This: Either!(Left, Right), That, Left, Right) {
+  alias EitherThisRight = Right;
+  alias EitherThatRight = typeof(EitherTypeOf!(That, Left, Right).right);
+
+  alias NewRight = PickDefinedType!(EitherThisRight, EitherThatRight);
+}
+
+///
+private auto resolve(T)(T newValue) {
+  static if(isCallable!newValue) {
+    return newValue();
+  } else {
+    return newValue;
+  }
+}
+
+///
+struct Any { }
 
 /// The Either type represents values with two possibilities:
 ///      a value of type Either a b is either Left a or Right b.
@@ -271,8 +319,24 @@ void bind(T)() if(isEitherStruct!T) {
 }
 
 /// ditto
-Either!(Left, Right) bind(Left, Right)(Either!(Left, Right) value) if(!isEitherStruct!Left && !isEitherStruct!Right) {
-  return value;
+Either!(NewLeft!(This, Left), NewRight!(This, Right)) bind(Left, Right, This: Either!(L, R), L, R)(This value) if(!isEitherStruct!Left && !isEitherStruct!Right && isEitherStruct!This) {
+  alias NewL = NewLeft!(This, Left);
+  alias NewR = NewRight!(This, Right);
+  alias LocalEither = Either!(NewL, NewR);
+
+  static if(!is(NewL == Any) && !is(L == Any)) {
+    if(value.isLeft) {
+      return LocalEither(value.left);
+    }
+  }
+
+  static if(!is(NewR == Any) && !is(R == Any)) {
+    if(value.isRight) {
+      return LocalEither(value.right);
+    }
+  }
+
+  assert(false, "Can't bind value `" ~ value.to!string ~ "` of type `" ~ This.stringof ~ "` to `" ~ LocalEither.stringof ~ "` .");
 }
 
 /// returns a right hand Either when the value is an int
@@ -360,49 +424,27 @@ unittest {
 
 /// Match Left or Right values by value examples
 auto when(alias value, T, This: Either!(Left, Right), Left, Right)(This either, T newValue) if(!isCallable!value) {
-
-  static if(isCallable!newValue) {
-    auto result = newValue();
-
-    alias NewLeft = Left;
-    alias NewRight = Right;
-
-  } else static if(isEitherStruct!T) {
-    auto result = newValue.left;
-
-    alias NewLeft = typeof(result);
-    alias NewRight = Right;
-  } else {
-    auto result = newValue;
-
-    alias NewLeft = Left;
-    alias NewRight = Right;
-  }
-
-  alias ValueType = typeof(value);
+  auto result = newValue.resolve;
   alias ResultType = typeof(result);
 
-  enum isLeftNewValue = is(ResultType == NewLeft);
-  enum isRightNewValue = is(ResultType == NewRight);
-
-  static if(!isLeftNewValue && !isRightNewValue) {
-    static assert(false, `Invalid new value type: "` ~ ResultType.stringof ~ `". Expected to be "` ~ Left.stringof ~ `", "` ~ Right.stringof ~ `" or Either.`);
-  }
+  alias NewL = NewLeft!(This, ResultType);
+  alias NewR = NewRight!(This, ResultType);
+  alias ValueType = typeof(value);
 
   static if(is(ValueType == Right)) {
     if(either.isRight && value == either.right) {
-      return result.bind!(NewLeft, NewRight);
+      return result.bind!(NewL, NewR);
     }
 
-    return either.right.bind!(NewLeft, NewRight);
+    return either.right.bind!(NewL, NewR);
   }
 
   static if(is(ValueType == Left)) {
     if(either.isLeft && value == either.left) {
-      return result.bind!(NewLeft, NewRight);
+      return result.bind!(NewL, NewR);
     }
 
-    return either.left.bind!(NewLeft, NewRight);
+    return either.left.bind!(NewL, NewR);
   }
 }
 
@@ -546,13 +588,24 @@ unittest {
   expect(result.left).to.equal("The value is 5!");
 }
 
+/// returning a left value with any
+unittest {
+  auto result = 0.bind.when!(0) ("got zero!".bindLeft);
+
+  result.isLeft.should.equal(true);
+  result.left.should.equal("got zero!");
+}
+
 /// Match Left or Right values using a check function
-This when(alias check, T, This: Either!(Left, Right), Left, Right)(This either, T result) if(isCallable!check) {
+Either!(NewLeft!(This, T), NewRight!(This, T)) when(alias check, T, This: Either!(Left, Right), Left, Right)(This either, T result) if(isCallable!check) {
+  alias NewL = NewLeft!(This, T);
+  alias NewR = NewRight!(This, T);
+
   if(either.checkEither!(check)) {
     static if(isCallable!result) {
-      return either.callWith(result).bind!This;
+      return either.callWith(result).bind!(NewL, NewR);
     } else {
-      return result.bind!This;
+      return result.bind!(NewL, NewR);
     }
   }
 
@@ -625,4 +678,9 @@ unittest {
 
   result.isLeft.should.equal(true);
   message.should.equal(2);
+}
+
+///
+auto bindLeft(T)(T value) {
+  return Either!(T, Any)(value);
 }
