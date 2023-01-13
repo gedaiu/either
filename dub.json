@@ -5,11 +5,21 @@
   "configurations": [
     {
       "name": "unittest",
-      "targetType": "autodetect",
+      "targetType": "library",
       "dependencies": {
         "fluent-asserts": "*",
-        "trial": "0.8.0-beta.1"
+        "trial": "0.8.0-beta.3"
       }
+    },
+    {
+      "name": "executable",
+      "targetType": "executable",
+      "versions": ["runExamples"]
+    },
+    {
+      "name": "library",
+      "targetType": "library",
+      "excludedSourceFiles": [ "source/examples/safeDivision.d" ]
     }
   ],
 	"copyright": "Copyright © 2022-2023, Bogdan Szabo",

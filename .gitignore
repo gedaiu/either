@@ -8,6 +8,11 @@ either.dylib
 either.dll
 either.a
 either.lib
+libeither.so
+libeither.dylib
+libeither.dll
+libeither.a
+libeither.lib
 either-test-*
 *.exe
 *.o
@@ -17,3 +22,4 @@ either-test-*
 either
 trial-root
 trial_root.d
+dub.selections.json
