@@ -1,9 +1,12 @@
 module examples.safeDivision;
 
 import either;
-import fluent.asserts;
 import std.traits;
 import std.math;
+
+version(unittest) {
+  import fluent.asserts;
+}
 
 bool isNaN(X)(X x) if (!isFloatingPoint!(X)) {
   return false;
@@ -14,32 +17,15 @@ bool isNaN(X)(X x) if (isFloatingPoint!(X)) {
 }
 
 ///
-Either!(string, T) divideBy(T)(T numerator, T denominator) if(!isEitherStruct!T) {
-  return numerator
-    .bind!(string, T)
-    .divideBy(
-      denominator.bind
-    );
-}
-
-///
-Either!(string, T) divideBy(T)(Either!(string, T) numerator, T denominator) if(!isEitherStruct!T) {
-  return numerator
-    .divideBy(
-      denominator.bind!(string, T)
-    );
-}
-
-///
-Either!(string, NumericType) divideBy(U, V, NumericType)(Either!(U, NumericType) numerator, Either!(V, NumericType) denominator) {
+auto divideBy(NumericType)(NumericType numerator, NumericType denominator) {
   enum NumericType zero = 0;
 
-  return denominator
+  return denominator.bind
     .when!(zero) ("Division by zero!".bindLeft)
     .when!(isNaN!NumericType) ("Denominator is NaN.")
     .when((NumericType a) =>
-      numerator
-        .when!(isNaN!NumericType) ("Numerator is NaN.")
+      numerator.bind
+        .when!(isNaN!NumericType) ("Numerator is NaN.".bindLeft)
         .when((NumericType b) => b / a)
     );
 }
@@ -109,7 +95,7 @@ string toString(T)(Either!(string, T) result) {
   return "\t" ~ message ~ "\n";
 }
 
-version(unittest) {} else
+version(runExamples):
 void main() {
   import std.stdio;
 

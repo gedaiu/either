@@ -319,9 +319,12 @@ void bind(T)() if(isEitherStruct!T) {
 }
 
 /// ditto
-Either!(NewLeft!(This, Left), NewRight!(This, Right)) bind(Left, Right, This: Either!(L, R), L, R)(This value) if(!isEitherStruct!Left && !isEitherStruct!Right && isEitherStruct!This) {
-  alias NewL = NewLeft!(This, Left);
-  alias NewR = NewRight!(This, Right);
+Either!(PickDefinedType!(L, Left), PickDefinedType!(R, Right))
+bind(Left, Right, This: Either!(L, R), L, R)(This value)
+if(!isEitherStruct!Left && !isEitherStruct!Right && isEitherStruct!This) {
+  alias NewL = PickDefinedType!(L, Left);
+  alias NewR = PickDefinedType!(R, Right);
+
   alias LocalEither = Either!(NewL, NewR);
 
   static if(!is(NewL == Any) && !is(L == Any)) {
@@ -609,7 +612,7 @@ Either!(NewLeft!(This, T), NewRight!(This, T)) when(alias check, T, This: Either
     }
   }
 
-  return either;
+  return either.bind!(NewL, NewR);
 }
 
 /// it calls the 'when' function when the function check returns true for Right value
