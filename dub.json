@@ -12,7 +12,7 @@
       }
     }
   ],
-	"copyright": "Copyright © 2022, Bogdan Szabo",
+	"copyright": "Copyright © 2022-2023, Bogdan Szabo",
   "description": "An implementation for the either monad",
   "license": "MIT",
   "name": "either"

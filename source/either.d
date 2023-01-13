@@ -40,6 +40,50 @@ bool canCheck(alias Matcher, ParameterType)() {
   }
 }
 
+///
+auto checkEither(alias check, This: Either!(Left, Right), Left, Right)(This either) {
+  static if(canCheck!(check, Left)) {
+    if(either.isLeft && check(either.left)) {
+      return true;
+    }
+  }
+
+  static if(canCheck!(check, Right)) {
+    if(either.isRight && check(either.right)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+///
+auto callWith(MapFunction, This: Either!(Left, Right), Left, Right)(This either, MapFunction mapFunction) if(isCallable!MapFunction) {
+  static if(Parameters!MapFunction.length == 0) {
+    return mapFunction();
+  }
+
+  static if(Parameters!MapFunction.length == 1 && isCallableWith!(MapFunction, Left)) {
+    if(either.isLeft) {
+      return mapFunction(either.left);
+    } else {
+      assert(0, "Got a right value. The mapFunction can't be called.");
+    }
+  }
+
+  static if(Parameters!MapFunction.length == 1 && isCallableWith!(MapFunction, Right)) {
+    if(either.isRight) {
+      return mapFunction(either.right);
+    } else {
+      assert(0, "Got a left value. The mapFunction can't be called.");
+    }
+  }
+
+  static if(Parameters!MapFunction.length > 1) {
+    static assert(false, "The map function must get none or 1 argument.");
+  }
+}
+
 /// Returns true if the given struct can be use as an Either struct
 template isEitherStruct(T) if(isAggregateType!T && hasMember!(T, "left") && hasMember!(T, "right")) {
   enum isEitherStruct = true;
@@ -499,49 +543,13 @@ unittest {
   expect(result.left).to.equal("The value is 5!");
 }
 
-// function matchers
-
-/// Match Left or Right values using functions
-This when(alias check, Matcher, This: Either!(Left, Right), Left, Right)(This either, Matcher matcher) if(canCheck!(check, Right) && isCallable!Matcher) {
-  if(either.isRight && check(either.right)) {
-    static if(Parameters!Matcher.length == 0) {
-      return matcher().bind!This;
-    } else static if(isCallableWith!(Matcher, Right)) {
-      return matcher(either.right).bind!This;
+/// Match Left or Right values using a check function
+This when(alias check, T, This: Either!(Left, Right), Left, Right)(This either, T result) if(isCallable!check) {
+  if(either.checkEither!(check)) {
+    static if(isCallable!result) {
+      return either.callWith(result).bind!This;
     } else {
-      static assert(false, "when() will never match. It checks `" ~ Right.stringof ~ "` values and it handles `" ~ Parameters!Matcher[0].stringof ~ "` values. The types must be the same.");
-    }
-  }
-
-  return either;
-}
-
-/// ditto
-This when(alias check, Matcher, This: Either!(Left, Right), Left, Right)(This either, Matcher matcher) if(canCheck!(check, Left) && isCallable!Matcher) {
-  if(either.isLeft && check(either.left)) {
-    static if(Parameters!Matcher.length == 0) {
-      return matcher().bind!This;
-    } else static if(isCallableWith!(Matcher, Left)) {
-      return matcher(either.left).bind!This;
-    } else {
-      static assert(false, "when() will never match. It checks `" ~ Left.stringof ~ "` values and it handles `" ~ Parameters!Matcher[0].stringof ~ "` values. The types must be the same.");
-    }
-  }
-
-  return either;
-}
-
-/// ditto
-This when(alias check, T, This: Either!(Left, Right), Left, Right)(This either, T newValue) if((is(T == Right) || is(T == Left)) && isCallable!check) {
-  static if(canCheck!(check, Left)) {
-    if(either.isLeft && check(either.left)) {
-      return newValue.bind!This;
-    }
-  }
-
-  static if(canCheck!(check, Right)) {
-    if(either.isRight && check(either.right)) {
-      return newValue.bind!This;
+      return result.bind!This;
     }
   }
 
