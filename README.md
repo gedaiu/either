@@ -127,7 +127,7 @@ and print the result to the console:
 ```
 
 
-... for a complete example you can check the source code [here](either/source/examples/safeDivision.d).
+... for a complete example you can check the source code [here](source/examples/safeDivision.d).
 
 
 ## License
