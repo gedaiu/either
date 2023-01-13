@@ -15,8 +15,9 @@ is used to hold a correct value (mnemonic: "right" also means "correct").
 You can initialize a struct directly or by using the bind function. All of these instantiations are equivalent:
 
 ```d
-  auto myEither = Either!(Left, Right)(someValue);
-  auto myEither = bind!(Left, Right)(someValue)
+  auto myEither = bind!(Left, Right)(someValue); /// Instantiate Either, and assign the side based on the type of `someValue`.
+  auto myEither = bind(someValue);     /// Instantiate Either with the Right value. Left Will have the "Any" type.
+  auto myEither = bindLeft(someValue); /// Instantiate Either with the Left value. Right Will have the "Any" type.
 ```
 
 ### Type matching
@@ -82,16 +83,16 @@ You can initialize a struct directly or by using the bind function. All of these
 This is a function that can safe divide two numbers. It returns an Either struct, where the Left type(the error) is a string and the Right value is a numeric type.
 
 ```d
-  Either!(string, NumericType) divideBy(U, V, NumericType)(Either!(U, NumericType) numerator, Either!(V, NumericType) denominator) {
+  auto divideBy(NumericType)(NumericType numerator, NumericType denominator) {
     enum NumericType zero = 0;
 
-    return denominator
-      .when!(zero) ("Division by zero!")                   // when denominator is zero, return Left value: "Division by zero!"
-      .when!(isNaN!NumericType) ("Denominator is NaN.")    // when denominator is NaN, return Left value: "Denominator is NaN."
-      .when((NumericType a) =>                             // when denominator has the Right type
-        numerator
-          .when!(isNaN!NumericType) ("Numerator is NaN.")  // when numerator is NaN, return Left value: "Numerator is NaN."
-          .when((NumericType b) => b / a)                  // when numerator has the Right type, return the division
+    return denominator.bind
+      .when!(zero) ("Division by zero!".bindLeft)
+      .when!(isNaN!NumericType) ("Denominator is NaN.")
+      .when((NumericType a) =>
+        numerator.bind
+          .when!(isNaN!NumericType) ("Numerator is NaN.".bindLeft)
+          .when((NumericType b) => b / a)
       );
   }
 ```
@@ -99,7 +100,7 @@ This is a function that can safe divide two numbers. It returns an Either struct
 The above function can be used like this:
 
 ```d
-  auto result = 30.bind!(string, int).divideBy(4.bind!(string, int));
+  auto result = 30.divideBy(4);
 ```
 
 or you can add a to string method that can help you to print the value:
@@ -122,11 +123,7 @@ and print the result to the console:
 
 ```d
   writeln("30 / 4 =");
-
-  30.bind!(string, int)
-    .divideBy(4.bind!(string, int))
-    .toString
-    .writeln;
+  30.divideBy(4).toString.writeln;
 ```
 
 
