@@ -223,12 +223,14 @@ struct Either(Left, Right) if(!is(Left == Right)) {
   /// Initialise the struct with the Left type
   this(Left value) {
     left = value;
+    right = Right.init;
     side = EitherSide.Left;
   }
 
   /// Initialise the struct with the Right type
   this(Right value) {
     right = value;
+    left = Left.init;
     side = EitherSide.Right;
   }
 }
@@ -614,6 +616,16 @@ Either!(NewLeft!(This, T), NewRight!(This, T)) when(alias check, T, This: Either
 
   return either.bind!(NewL, NewR);
 }
+
+/// Bind nested structs
+unittest {
+  // Nested structs need to be explicitly initialized in the constructor.
+  import std.algorithm.iteration;
+  auto base = [0,1,2];
+  auto l = bindLeft(base.map!( a => a + 1));
+  auto r = bind(base.map!( a => a + 1));
+}
+  
 
 /// it calls the 'when' function when the function check returns true for Right value
 unittest {
