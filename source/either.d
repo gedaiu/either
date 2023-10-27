@@ -274,23 +274,23 @@ unittest {
 }
 
 version(unittest) {
-  alias TestEither = Either!(int, Exception);
+  private alias TestEither = Either!(int, Exception);
 }
 
 version(unittest) {
-  bool alwaysTrue(bool) {
+  private bool alwaysTrue(bool) {
     return true;
   }
 
-  bool alwaysTrueInt(int) {
+  private bool alwaysTrueInt(int) {
     return true;
   }
 
-  bool alwaysFalse(bool) {
+  private bool alwaysFalse(bool) {
     return false;
   }
 
-  bool alwaysFalseInt(int) {
+  private bool alwaysFalseInt(int) {
     return false;
   }
 }
