@@ -4,7 +4,7 @@ import std.traits;
 import std.conv;
 
 version(unittest) {
-  import fluent.asserts;
+  import _expect;
 }
 
 ///
@@ -625,7 +625,7 @@ unittest {
   auto l = bindLeft(base.map!( a => a + 1));
   auto r = bind(base.map!( a => a + 1));
 }
-  
+
 
 /// it calls the 'when' function when the function check returns true for Right value
 unittest {

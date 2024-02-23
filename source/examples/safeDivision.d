@@ -5,7 +5,7 @@ import std.traits;
 import std.math;
 
 version(unittest) {
-  import fluent.asserts;
+  import _expect;
 }
 
 bool isNaN(X)(X x) if (!isFloatingPoint!(X)) {
